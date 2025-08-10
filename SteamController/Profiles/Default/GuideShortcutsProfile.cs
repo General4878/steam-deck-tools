@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ExternalHelpers;
 using PowerControl.Helpers;
 using WindowsInput;
+using static SteamController.Devices.SteamController;
 
 namespace SteamController.Profiles.Default
 {
@@ -140,6 +141,31 @@ namespace SteamController.Profiles.Default
                     )
                 );
             }
+
+            if (SettingsDebug.Default.FauxLizardMode && !c.Steam.LizardButtons && !c.Steam.LizardMouse)
+            {
+                // Send haptic for pad presses
+                if (c.Steam.BtnLPadPress.Pressed() || c.Steam.BtnLPadPress.JustPressed())
+                {
+                    c.Steam.SendHaptic(HapticPad.Left, HapticStyle.Strong, 8);
+                }
+
+                // Send haptic for pad drag
+                if (c.Mouse.HapticDragLFauxLizard(
+                    c.Steam.LPadX.GetDeltaValue(
+                        150,
+                        Devices.DeltaValueMode.Delta,
+                        10
+                    ),
+                    c.Steam.LPadY.GetDeltaValue(
+                        150,
+                        Devices.DeltaValueMode.Delta,
+                        10
+                    ),
+                    c.Steam.BtnLPadTouch?.LastValue ?? false
+                ))
+                    c.Steam.SendHaptic(HapticPad.Left, HapticStyle.Weak, 5);
+            }
         }
 
         protected void EmulateMouseOnRStick(Context c)
@@ -174,7 +200,43 @@ namespace SteamController.Profiles.Default
                 c.Mouse[Devices.MouseController.Button.Left] = c.Steam.BtnRPadPress;
             }
 
-            if (c.Steam.RPadX || c.Steam.RPadY)
+            bool simpleEmulation = true;
+
+            if (SettingsDebug.Default.FauxLizardMode && !c.Steam.LizardButtons && !c.Steam.LizardMouse)
+            {
+                c.Mouse.MoveByFauxLizard(
+                    c.Steam.RPadX.GetDeltaValue(Context.PadToMouseSensitivity, Devices.DeltaValueMode.Delta, 10),
+                    -c.Steam.RPadY.GetDeltaValue(Context.PadToMouseSensitivity, Devices.DeltaValueMode.Delta, 10),
+                    c.Steam.BtnRPadTouch?.LastValue ?? false
+                );
+
+                // Send haptic for pad presses
+                if (c.Steam.BtnRPadPress.Pressed() || c.Steam.BtnRPadPress.JustPressed())
+                {
+                    c.Steam.SendHaptic(HapticPad.Right, HapticStyle.Strong, 8);
+                }
+
+                // Send haptic for pad drag
+                if (c.Mouse.HapticDragRFauxLizard(
+                    c.Steam.RPadX.GetDeltaValue(
+                        150,
+                        Devices.DeltaValueMode.Delta,
+                        10
+                    ),
+                    c.Steam.RPadY.GetDeltaValue(
+                        150,
+                        Devices.DeltaValueMode.Delta,
+                        10
+                    ),
+                    c.Steam.BtnRPadTouch?.LastValue ?? false
+                ))
+                    c.Steam.SendHaptic(HapticPad.Right, HapticStyle.Weak, 5);
+
+                // We do not want simple emulation after faux lizard emulation
+                simpleEmulation = false;
+            }
+
+            if (simpleEmulation && (c.Steam.RPadX || c.Steam.RPadY))
             {
                 c.Mouse.MoveBy(
                     c.Steam.RPadX.GetDeltaValue(Context.PadToMouseSensitivity, Devices.DeltaValueMode.Delta, 10),
