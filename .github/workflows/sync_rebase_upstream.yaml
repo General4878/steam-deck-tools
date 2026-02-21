@@ -1,0 +1,90 @@
+name: Sync (rebase) from upstream SDT
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork main (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/ayufan/steam-deck-tools.git || true
+          git remote -v
+
+      - name: Fetch upstream main + tags
+        run: |
+          git fetch upstream --prune --tags
+          git fetch upstream main
+
+      - name: Rebase main onto upstream/main
+        run: |
+          git checkout main
+          git rebase upstream/main
+
+      - name: Restore fork-specific files (README etc.)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin fork-meta
+          git checkout origin/fork-meta -- README.md
+          git add README.md
+
+          # Commit only if it actually changed
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git commit -m "Workflow: Restore fork README after upstream rebase"
+          else
+            echo "README already matches fork-meta; nothing to commit."
+          fi
+
+      - name: Push rebased main back to origin
+        run: |
+          git push origin main --force-with-lease
+
+      - name: Push upstream tags to origin (latest numeric base tag only)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          majorVer="$(cat VERSION)"   # e.g. 0.7
+          echo "Selecting latest numeric base tag for ${majorVer}.*"
+
+          # Collect numeric tags like 0.7.0, 0.7.1, 0.7.4 ...
+          mapfile -t TAGS < <(
+            git tag -l "${majorVer}.*" \
+              | grep -E "^${majorVer}\.[0-9]+$" || true
+          )
+
+          if [ "${#TAGS[@]}" -eq 0 ]; then
+            echo "No numeric tags found for ${majorVer}.*"
+            exit 0
+          fi
+
+          # Try pushing from newest -> oldest until one succeeds
+          # (Often only some tags are blocked by the workflow-permission rule)
+          for t in $(printf "%s\n" "${TAGS[@]}" | sort -V -r); do
+            echo "Attempting to push tag: $t"
+            if git push origin "refs/tags/$t"; then
+              echo "Successfully pushed tag: $t"
+              exit 0
+            else
+              echo "Failed to push tag: $t (continuing...)"
+            fi
+          done
+
+          echo "Could not push any numeric tag for ${majorVer}.* due to permission restrictions."
+          exit 0

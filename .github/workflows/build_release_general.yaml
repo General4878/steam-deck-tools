@@ -1,0 +1,156 @@
+name: Build Release (General)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_g:
+        description: "Increment fork G revision?"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+env:
+  RELEASE_NAME: SteamDeckTools
+  DOTNET_VERSION: "6.0.x"   # SDT uses 6.0.x in its workflow
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Set RELEASE_VERSION (BASE_VERSION + global G)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Read major.minor from root VERSION file (e.g. 0.7)
+          majorVer="$(cat VERSION)"
+          echo "majorVer (from VERSION): $majorVer"
+
+          # BASE_VERSION = latest numeric tag like 0.7.4 (ignores -G tags)
+          BASE_VERSION="$(
+            (
+              git tag -l "${majorVer}.*" \
+              | grep -E "^${majorVer}\.[0-9]+$" || true
+            ) | sort -V | tail -n 1
+          )"
+
+          if [ -z "${BASE_VERSION}" ]; then
+            BASE_VERSION="${majorVer}.0"
+          fi
+          echo "BASE_VERSION detected: $BASE_VERSION"
+
+          # Global G revision = highest -G<number> in your fork
+          LAST_G="$(
+            (
+              git tag -l "*-G*" \
+              | sed -nE 's/^.*-G([0-9]+)$/\1/p' || true
+            ) | sort -n | tail -n 1
+          )"
+          if [ -z "${LAST_G}" ]; then
+            LAST_G=0
+          fi
+          echo "LAST_G detected: $LAST_G"
+
+          if [ "${{ github.event.inputs.bump_g }}" = "true" ]; then
+            G_REV=$((LAST_G + 1))
+          else
+            G_REV=$LAST_G
+            if [ "$G_REV" -eq 0 ]; then
+              G_REV=1
+            fi
+          fi
+
+          RELEASE_VERSION="${BASE_VERSION}-G${G_REV}"
+
+          echo "G_REV chosen: $G_REV"
+          echo "RELEASE_VERSION: $RELEASE_VERSION"
+
+          echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_ENV
+          echo "G_REV=$G_REV" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+
+      - name: Build Release
+        run: dotnet build --configuration Release --output "${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}/" `
+          "/property:Version=${{ env.RELEASE_VERSION }}" `
+          "/property:InformationalVersion=${{ env.RELEASE_VERSION }}" `
+          "/property:IncludeSourceRevisionInInformationalVersion=false" `
+          "/property:SourceRevisionId=" `
+          "/property:ContinuousIntegrationBuild=false" `
+          "/property:ExtraDefineConstants=PRODUCTION_BUILD"
+      
+      - name: Build Debug
+        run: dotnet build --configuration Debug --output "${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-debug/" `
+          "/property:Version=${{ env.RELEASE_VERSION }}" `
+          "/property:InformationalVersion=${{ env.RELEASE_VERSION }}" `
+          "/property:IncludeSourceRevisionInInformationalVersion=false" `
+          "/property:SourceRevisionId=" `
+          "/property:ContinuousIntegrationBuild=false" `
+          "/property:ExtraDefineConstants=PRODUCTION_BUILD"
+
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+
+      - name: Zip portable release
+        uses: vimtor/action-zip@v1
+        with:
+          files: ${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}
+          dest: ${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-portable.zip
+          recursive: true
+
+      - name: Zip debug build
+        uses: vimtor/action-zip@v1
+        with:
+          files: ${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-debug
+          dest: ${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-debug.zip
+          recursive: true
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Create release installer (NSIS)
+        uses: joncloud/makensis-action@v3.7
+        with:
+          script-file: scripts/SteamDeckTools_GeneralSetup.nsi
+          arguments: >
+            /V3
+            /DUSE_WINGET
+            /DVERSION=${{ env.BASE_VERSION }}
+            /DDISPLAY_VERSION=${{ env.RELEASE_VERSION }}
+            "/DBUILD_DIR=../${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}/"
+            "/DOUTPUT_FILE=../${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-setup.exe"
+
+      - name: Generate release body from RELEASE_GENERAL.md
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp RELEASE_GENERAL.md RELEASE_BODY.md
+          sed -i 's|#{GIT_TAG_NAME}|${{ env.RELEASE_VERSION }}|g' RELEASE_BODY.md
+
+      - name: Create GitHub Release and upload assets
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_VERSION }}
+          name: ${{ env.RELEASE_VERSION }}
+          artifacts: "*.zip,*-setup.exe"
+          prerelease: true
+          generateReleaseNotes: false
+          bodyFile: RELEASE_BODY.md
