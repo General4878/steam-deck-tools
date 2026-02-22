@@ -1,8 +1,17 @@
-# (Windows) Steam Deck Tools
+# (Windows) Steam Deck Tools - General4878's Version
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/ayufan/steam-deck-tools?label=stable&style=flat-square)](https://github.com/ayufan/steam-deck-tools/releases/latest)
-[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/ayufan/steam-deck-tools?color=red&include_prereleases&label=beta&style=flat-square)](https://github.com/ayufan/steam-deck-tools/releases)
-![GitHub all releases](https://img.shields.io/github/downloads/ayufan/steam-deck-tools/total?style=flat-square)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/General4878/steam-deck-tools?label=stable&style=flat-square)](https://github.com/General4878/steam-deck-tools/releases/latest)
+[![GitHub release (latest SemVer including pre-releases)](https://img.shields.io/github/v/release/General4878/steam-deck-tools?color=red&include_prereleases&label=beta&style=flat-square)](https://github.com/General4878/steam-deck-tools/releases)
+![GitHub all releases](https://img.shields.io/github/downloads/General4878/steam-deck-tools/total?style=flat-square)
+
+---
+
+## What is different in this version?
+
+- Option to emulate **Lizard Mouse** in software (FauxLizardMode in Controller settings), as the later SteamOS versions have broken native Lizard support.
+- Higher **thread / application priority** given to the controller app so that it is more responsive in high-CPU usage scenarios.
+
+---
 
 This repository contains my own personal set of tools to help running Windows on Steam Deck.
 
