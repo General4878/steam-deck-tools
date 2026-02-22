@@ -1,5 +1,9 @@
 ## #{GIT_TAG_NAME}
 
+- Updater: Point updater to this repo
+
+## 0.7.4-G1
+
 - SteamController: Added Lizard Mouse software emulation as newer SteamOS versions break native Lizard Mouse on Windows. **Please enable FauxLizardMode in settings**.
 
 ## 0.7.4
@@ -29,9 +33,3 @@
 ## 0.6.22
 
 - SteamController: Fix broken scroll on left pad introduced by 0.6.21
-
-## 0.6.21
-
-- SteamController: Add support for circular deadzone on left/right sticks
-- FanControl: Add Silent fan profile. Configure `Silent4000RPMTemp` threshold in `FanControl.dll.ini`
-- SteamController: Added `Win+D` shortcut under `Steam+RightStickPress`
