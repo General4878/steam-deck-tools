@@ -155,40 +155,45 @@ jobs:
           generateReleaseNotes: false
           bodyFile: RELEASE_BODY.md
 
-      - name: Generate update XML feeds (Pages)
+      - name: Generate updater XML feeds
         shell: bash
         run: |
           set -euo pipefail
 
           mkdir -p pages/updates
 
-          # Convert BASE_VERSION=0.7.4 and G_REV=1 -> 0.7.4.1
           NUMERIC_VERSION="${BASE_VERSION}.${G_REV}"
 
-          make_xml () {
+          REPO="${{ github.repository }}"
+          TAG="${RELEASE_VERSION}"
+
+          write_xml () {
             local file="$1"
             local url="$2"
-            cat > "pages/updates/$file" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
+
+            cat > "pages/updates/${file}" <<EOF
           <item>
-            <version>${NUMERIC_VERSION}</version>
-            <url>${url}</url>
-            <changelog>https://github.com/${{ github.repository }}/releases/tag/${RELEASE_VERSION}</changelog>
-            <mandatory>false</mandatory>
+          <version>${NUMERIC_VERSION}</version>
+          <url>${url}</url>
+          <changelog2>https://github.com/${REPO}/releases/tag/${TAG}</changelog2>
+          <args/>
+          <mandatory>false</mandatory>
           </item>
           EOF
           }
 
-          make_xml "prod_release_setup.xml" "https://github.com/${{ github.repository }}/releases/download/${RELEASE_VERSION}/SteamDeckTools-${RELEASE_VERSION}-setup.exe"
-          make_xml "prod_release_zip.xml"   "https://github.com/${{ github.repository }}/releases/download/${RELEASE_VERSION}/SteamDeckTools-${RELEASE_VERSION}-portable.zip"
-          make_xml "prod_debug_zip.xml"     "https://github.com/${{ github.repository }}/releases/download/${RELEASE_VERSION}/SteamDeckTools-${RELEASE_VERSION}-debug.zip"
+          # Installer feed (setup)
+          write_xml "prod_release_setup.xml" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-setup.exe"
 
-          # If you also publish a debug installer, add:
-          # make_xml "prod_debug_setup.xml" "https://github.com/${{ github.repository }}/releases/download/${RELEASE_VERSION}/SteamDeckTools-${RELEASE_VERSION}-debug-setup.exe"
+          # Portable zip feed (zip)
+          write_xml "prod_release_zip.xml" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-portable.zip"
 
-      - name: Deploy update feeds to GitHub Pages (gh-pages)
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Debug zip feed (zip)
+          write_xml "prod_debug_zip.xml" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-debug.zip"
+
+          echo "Generated feeds:"
+          ls -la pages/updates
+          echo "---- prod_release_setup.xml ----"
+          cat pages/updates/prod_release_setup.xml
           publish_branch: gh-pages
           publish_dir: pages
