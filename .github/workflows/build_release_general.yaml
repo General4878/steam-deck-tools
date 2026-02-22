@@ -191,10 +191,10 @@ jobs:
           }
 
           # Installer feed (setup)
-          write_xml "prod_release_setup.xml" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-setup.exe"
+          write_xml "prod_release_setup.xml.tmp" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-setup.exe"
 
           # Portable zip feed (zip)
-          write_xml "prod_release_zip.xml" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-portable.zip"
+          write_xml "prod_release_zip.xml.tmp" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-portable.zip"
 
           # Debug zip feed (zip)
           write_xml "prod_debug_zip.xml" "https://github.com/${REPO}/releases/download/${TAG}/SteamDeckTools-${TAG}-debug.zip"
