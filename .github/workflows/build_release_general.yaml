@@ -195,5 +195,11 @@ jobs:
           ls -la pages/updates
           echo "---- prod_release_setup.xml ----"
           cat pages/updates/prod_release_setup.xml
+
+      - name: Deploy updater feeds to GitHub Pages (gh-pages)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: pages
+          force_orphan: true
