@@ -201,8 +201,8 @@ jobs:
 
           echo "Generated feeds:"
           ls -la pages/updates
-          echo "---- prod_release_setup.xml ----"
-          cat pages/updates/prod_release_setup.xml
+          echo "---- prod_release_setup.xml.tmp ----"
+          cat pages/updates/prod_release_setup.xml.tmp
 
       - name: Deploy updater feeds to GitHub Pages (gh-pages)
         uses: peaceiris/actions-gh-pages@v4
