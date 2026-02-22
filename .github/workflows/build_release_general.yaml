@@ -89,21 +89,29 @@ jobs:
           echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
 
       - name: Build Release
-        run: dotnet build --configuration Release --output "${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}/" `
-          "/property:Version=${{ env.RELEASE_VERSION }}" `
-          "/property:InformationalVersion=${{ env.RELEASE_VERSION }}" `
-          "/property:IncludeSourceRevisionInInformationalVersion=false" `
-          "/property:SourceRevisionId=" `
-          "/property:ContinuousIntegrationBuild=false" `
+        run: >
+          dotnet build --configuration Release
+          --output "${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}/"
+          "/property:Version=${{ env.BASE_VERSION }}.${{ env.G_REV }}"
+          "/property:AssemblyVersion=${{ env.BASE_VERSION }}.${{ env.G_REV }}"
+          "/property:FileVersion=${{ env.BASE_VERSION }}.${{ env.G_REV }}"
+          "/property:InformationalVersion=${{ env.RELEASE_VERSION }}"
+          "/property:IncludeSourceRevisionInInformationalVersion=false"
+          "/property:SourceRevisionId="
+          "/property:ContinuousIntegrationBuild=false"
           "/property:ExtraDefineConstants=PRODUCTION_BUILD"
       
       - name: Build Debug
-        run: dotnet build --configuration Debug --output "${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-debug/" `
-          "/property:Version=${{ env.RELEASE_VERSION }}" `
-          "/property:InformationalVersion=${{ env.RELEASE_VERSION }}" `
-          "/property:IncludeSourceRevisionInInformationalVersion=false" `
-          "/property:SourceRevisionId=" `
-          "/property:ContinuousIntegrationBuild=false" `
+        run: >
+          dotnet build --configuration Debug
+          --output "${{ env.RELEASE_NAME }}-${{ env.RELEASE_VERSION }}-debug/"
+          "/property:Version=${{ env.BASE_VERSION }}.${{ env.G_REV }}"
+          "/property:AssemblyVersion=${{ env.BASE_VERSION }}.${{ env.G_REV }}"
+          "/property:FileVersion=${{ env.BASE_VERSION }}.${{ env.G_REV }}"
+          "/property:InformationalVersion=${{ env.RELEASE_VERSION }}"
+          "/property:IncludeSourceRevisionInInformationalVersion=false"
+          "/property:SourceRevisionId="
+          "/property:ContinuousIntegrationBuild=false"
           "/property:ExtraDefineConstants=PRODUCTION_BUILD"
 
       - name: Test
