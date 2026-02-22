@@ -1,5 +1,9 @@
 ## #{GIT_TAG_NAME}
 
+- SteamController: FauxLizardMode always enabled by default
+
+## 0.7.4-G2
+
 - Updater: Point updater to this repo
 
 ## 0.7.4-G1
@@ -29,7 +33,3 @@
 - FanControl: Support for SteamDeck OLED
 - PerformanceOverlay: Support the `AMD Custom GPU 0932` found in SteamDeck OLED
 - PowerControl: Support `AMD Custom GPU 0932` with a SMU at `0x80600000-0x8067ffff` ver.: `0x063F0E00`
-
-## 0.6.22
-
-- SteamController: Fix broken scroll on left pad introduced by 0.6.21
