@@ -130,7 +130,7 @@ namespace Updater
             // - Updates 1, 3 and 7 days: amount of times update run in 1 day, 3 and 7 days
 
             var updateURL = String.Format(
-                "https://steam-deck-tools.ayufan.dev/updates/{4}_{0}_{1}.xml?version={2}&installTime={3}&env={4}&apps={5}&updatesLast1={6}&updatesLast3={7}&updatesLast7={8}",
+                "https://General4878.github.io/steam-deck-tools/updates/{4}_{0}_{1}.xml?version={2}&installTime={3}&env={4}&apps={5}&updatesLast1={6}&updatesLast3={7}&updatesLast7={8}",
                 Instance.IsDEBUG ? "debug" : "release",
                 IsUsingInstaller ? "setup" : "zip",
                 HttpUtility.UrlEncode(Instance.ProductVersionWithSha),
