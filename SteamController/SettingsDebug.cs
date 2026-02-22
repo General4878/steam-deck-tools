@@ -30,7 +30,7 @@ namespace SteamController
         [Description("Emulate Lizard controls in software. LizardButtons and LizardMouse must be disabled for this to take effect.")]
         public bool FauxLizardMode
         {
-            get { return Get<bool>("FauxLizardMode", false); }
+            get { return Get<bool>("FauxLizardMode", true); }
             set { Set("FauxLizardMode", value); }
         }
 
