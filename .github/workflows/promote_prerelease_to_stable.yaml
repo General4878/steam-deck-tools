@@ -1,0 +1,114 @@
+name: Promote latest pre-release to stable (and update stable feeds)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Find latest pre-release (by created_at)
+        id: find
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Get releases JSON
+          releases_json="$(gh api "repos/${REPO}/releases?per_page=100")"
+
+          # Pick newest prerelease (not draft) by created_at
+          release_id="$(echo "$releases_json" | jq -r '
+            map(select(.prerelease == true and .draft == false))
+            | sort_by(.created_at)
+            | last
+            | .id // empty
+          ')"
+
+          tag_name="$(echo "$releases_json" | jq -r '
+            map(select(.prerelease == true and .draft == false))
+            | sort_by(.created_at)
+            | last
+            | .tag_name // empty
+          ')"
+
+          if [ -z "${release_id}" ] || [ -z "${tag_name}" ]; then
+            echo "No prerelease found to promote."
+            exit 1
+          fi
+
+          echo "Latest prerelease found: id=${release_id}, tag=${tag_name}"
+          echo "release_id=${release_id}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Mark release as stable (prerelease=false)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ steps.find.outputs.release_id }}
+        run: |
+          set -euo pipefail
+
+          # Update the release: prerelease -> false
+          gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -f prerelease=false >/dev/null
+          echo "Promoted release ${RELEASE_ID} to stable."
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Promote .tmp feeds to stable feeds on gh-pages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Ensure folder exists
+          mkdir -p updates
+
+          # The build workflow writes to pages/updates/ then deploys to gh-pages as updates/
+          # So on gh-pages branch, stable feeds live at updates/*.xml
+          if [ ! -f "updates/prod_release_setup.xml.tmp" ] || [ ! -f "updates/prod_release_zip.xml.tmp" ]; then
+            echo "Missing .tmp stable feeds in gh-pages/updates."
+            echo "Expected:"
+            echo "  updates/prod_release_setup.xml.tmp"
+            echo "  updates/prod_release_zip.xml.tmp"
+            echo ""
+            echo "Did your build workflow deploy them to gh-pages with keep_files?"
+            exit 1
+          fi
+
+          cp -f "updates/prod_release_setup.xml.tmp" "updates/prod_release_setup.xml"
+          cp -f "updates/prod_release_zip.xml.tmp"   "updates/prod_release_zip.xml"
+
+          # (Optional) If you also want to promote a debug stable feed and you create it as .tmp:
+          # if [ -f "updates/prod_release_debug_zip.xml.tmp" ]; then
+          #   cp -f "updates/prod_release_debug_zip.xml.tmp" "updates/prod_release_debug_zip.xml"
+          # fi
+
+          echo "Promoted stable feeds:"
+          ls -la updates/prod_release_*.xml || true
+
+      - name: Commit and push stable feed updates
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add updates/prod_release_setup.xml updates/prod_release_zip.xml
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit (stable feeds already match .tmp)."
+            exit 0
+          fi
+
+          git commit -m "Promote stable update feeds"
+          git push origin gh-pages
