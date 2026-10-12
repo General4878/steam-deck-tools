@@ -27,6 +27,42 @@ namespace SteamController
             set { Set("LizardMouse", value); }
         }
 
+        [Browsable(true)]
+        [RefreshProperties(RefreshProperties.All)]
+        [Description("Pressure below which a Faux Lizard Mode trackpad press is released. Default: 6900.")]
+        public ushort FauxPadReleaseThreshold
+        {
+            get { return Get<ushort>("FauxPadReleaseThreshold", 6900); }
+            set
+            {
+                int release = Math.Min(65435, (int)value);
+
+                // Press must be at least 100 above release
+                if (FauxPadPressThreshold < release + 100)
+                    Set("FauxPadPressThreshold", (ushort)(release + 100));
+
+                Set("FauxPadReleaseThreshold", (ushort)release);
+            }
+        }
+
+        [Browsable(true)]
+        [RefreshProperties(RefreshProperties.All)]
+        [Description("Pressure required to register a Faux Lizard Mode trackpad press. Default: 9500.")]
+        public ushort FauxPadPressThreshold
+        {
+            get { return Get<ushort>("FauxPadPressThreshold", 9500); }
+            set
+            {
+                int press = Math.Max(100, (int)value);
+
+                // Release must be at least 100 below press
+                if (FauxPadReleaseThreshold > press - 100)
+                    Set("FauxPadReleaseThreshold", (ushort)(press - 100));
+
+                Set("FauxPadPressThreshold", (ushort)press);
+            }
+        }
+
         [Description("Emulate Lizard controls in software. LizardButtons and LizardMouse must be disabled for this to take effect.")]
         public bool FauxLizardMode
         {
