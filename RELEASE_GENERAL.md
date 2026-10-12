@@ -1,5 +1,10 @@
 ## #{GIT_TAG_NAME}
 
+- SteamController: Added adjustable trackpad press and release pressure thresholds for FauxLizardMode.
+- SteamController: Added pressure sensitivity settings under Debug.
+
+## 0.7.4-G3
+
 - SteamController: FauxLizardMode always enabled by default
 
 ## 0.7.4-G2
