@@ -17,6 +17,10 @@ namespace SteamController.Devices
         public long ElapsedMilliseconds { get => stopwatch.ElapsedMilliseconds; }
         public double DeltaTime { get; private set; }
 
+        // Faux Lizard Mode parameters
+        private bool fauxLeftPadPressed = false;
+        private bool fauxRightPadPressed = false;
+
         internal SteamController()
         {
             InitializeButtons();
@@ -63,6 +67,8 @@ namespace SteamController.Devices
 
         private void BeforeUpdate(byte[] buffer)
         {
+            ApplyFauxTrackpadPresses(buffer);
+
             foreach (var action in AllActions)
                 action.BeforeUpdate(buffer);
         }
@@ -128,6 +134,77 @@ namespace SteamController.Devices
                     TraceException("STEAM", "Update", e);
                 Fail();
             }
+        }
+
+        // Sets track pads button press bit if specified pressures are detected
+        private void ApplyFauxTrackpadPresses(byte[] buffer)
+        {
+            // Obtain presure thresholds
+            ushort pressThreshold =
+                SettingsDebug.Default.FauxPadPressThreshold;
+
+            ushort releaseThreshold =
+                SettingsDebug.Default.FauxPadReleaseThreshold;
+
+            // Only enable if Faux Lizard Mode is active
+            bool enabled =
+                SettingsDebug.Default.FauxLizardMode &&
+                !SettingsDebug.Default.LizardMouse &&
+                !SettingsDebug.Default.LizardButtons;
+
+            if (!enabled)
+            {
+                fauxLeftPadPressed = false;
+                fauxRightPadPressed = false;
+                return;
+            }
+
+            // Ensure the HID report contains both pressure readings
+            if (buffer.Length < 0x3C)
+                return;
+
+            // Read pressure values from the Steam Deck HID report.
+            ushort leftPressure = BitConverter.ToUInt16(buffer, 0x38);
+            ushort rightPressure = BitConverter.ToUInt16(buffer, 0x3A);
+
+            // Check whether each trackpad is actually being touched.
+            bool leftTouched = (buffer[0x0A] & 0x08) != 0;
+            bool rightTouched = (buffer[0x0A] & 0x10) != 0;
+
+            // Left trackpad: press and release
+            if (!leftTouched)
+            {
+                fauxLeftPadPressed = false;
+            }
+            else if (!fauxLeftPadPressed)
+            {
+                fauxLeftPadPressed = leftPressure >= pressThreshold;
+            }
+            else
+            {
+                fauxLeftPadPressed = leftPressure > releaseThreshold;
+            }
+
+            // Right trackpad: press and release
+            if (!rightTouched)
+            {
+                fauxRightPadPressed = false;
+            }
+            else if (!fauxRightPadPressed)
+            {
+                fauxRightPadPressed = rightPressure >= pressThreshold;
+            }
+            else
+            {
+                fauxRightPadPressed = rightPressure > releaseThreshold;
+            }
+
+            // Replace the two trackpad press bits
+            buffer[0x0A] = (byte)(
+                (buffer[0x0A] & ~0x06) |
+                (fauxLeftPadPressed ? 0x02 : 0) |
+                (fauxRightPadPressed ? 0x04 : 0)
+            );
         }
     }
 }
